@@ -229,7 +229,48 @@ let fetch_twitter_tweet (url : string) : (string option * string option * string
                     (fun m ->
                        match member "media_url_https" m, member "type" m with
                        | `String url, `String ty when String.length url > 0 ->
-                           Some (`Assoc [ "url", `String url; "type", `String ty ])
+                           let base =
+                             [ "url", `String url; "type", `String ty ]
+                           in
+                           let base =
+                             match ty with
+                             | "video" | "animated_gif" -> (
+                                 match member "video_info" m |> member "variants" with
+                                 | `List vs ->
+                                     let candidates =
+                                       vs
+                                       |> List.filter_map (fun v ->
+                                              match member "url" v, member "content_type" v, member "bitrate" v with
+                                              | `String u, `String ct, `Int b ->
+                                                  Some (u, ct, b)
+                                              | `String u, `String ct, _ ->
+                                                  Some (u, ct, 0)
+                                              | _ -> None)
+                                     in
+                                     let chosen =
+                                       match candidates with
+                                       | [] -> None
+                                       | _ ->
+                                           let sorted =
+                                             List.sort
+                                               (fun (_, _, b1) (_, _, b2) ->
+                                                  compare b2 b1)
+                                               candidates
+                                           in
+                                           match sorted with
+                                           | (u, ct, _) :: _ -> Some (u, ct)
+                                           | _ -> None
+                                     in
+                                     (match chosen with
+                                     | Some (u, ct) ->
+                                         ("video_url", `String u)
+                                         :: ("content_type", `String ct)
+                                         :: base
+                                     | None -> base)
+                                 | _ -> base)
+                             | _ -> base
+                           in
+                           Some (`Assoc base)
                        | _ -> None)
                     ms
               | _ -> []

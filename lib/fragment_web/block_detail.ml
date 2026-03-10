@@ -2,8 +2,8 @@ open Dream_html
 open HTML
 
 let media_items_of_block (b : Fragment.Block.t) :
-    (string * string) list =
-  (* (url, kind) *)
+    (string * string * string option) list =
+  (* (poster_url, kind, video_url) *)
   match b.media_json with
   | Some s -> (
       try
@@ -22,14 +22,19 @@ let media_items_of_block (b : Fragment.Block.t) :
                        | Some (`String k) -> k
                        | _ -> "image"
                      in
-                     if url = "" then None else Some (url, kind)
+                     let video_url =
+                       match List.assoc_opt "video_url" fields with
+                       | Some (`String u) when String.length u > 0 -> Some u
+                       | _ -> None
+                     in
+                     if url = "" then None else Some (url, kind, video_url)
                  | _ -> None)
         | _ -> []
       with _ -> [])
   | None ->
       (* Fall back: image block uses content as a single image. *)
       if String.lowercase_ascii b.kind = "image" then
-        [ (b.content, "image") ]
+        [ (b.content, "image", None) ]
       else
         []
 
@@ -63,11 +68,46 @@ let body ~(request : Dream.request) ~(block : Fragment.Block.t) =
           ul
             [ class_ "%s grid gap-4" cols ]
             (List.map
-               (fun (url, _kind) ->
+               (fun (url, kind, video_opt) ->
+                  let is_video =
+                    let k = String.lowercase_ascii kind in
+                    k = "video" || k = "animated_gif"
+                  in
+                  let media_node =
+                    match (is_video, video_opt) with
+                    | true, Some vurl ->
+                        let proxied =
+                          Printf.sprintf "/proxy/twitter?url=%s"
+                            (Dream.to_base64url vurl)
+                        in
+                        video
+                          [ HTML.src "%s" proxied;
+                            autoplay;
+                            loop;
+                            muted;
+                            playsinline;
+                            class_ "w-full h-full object-cover" ]
+                          []
+                    | _ ->
+                        img [ src "%s" url;
+                              alt "%s" title_text;
+                              class_ "w-full h-full object-cover" ]
+                  in
+                  let badge =
+                    if is_video then
+                      let label =
+                        if String.lowercase_ascii kind = "animated_gif"
+                        then "GIF" else "VIDEO"
+                      in
+                      div
+                        [ class_ "absolute bottom-1 right-1 bg-black/70 text-[0.6rem] text-white px-1.5 py-0.5 rounded-full" ]
+                        [ txt "%s" label ]
+                    else
+                      span [] []
+                  in
                   li [ class_ "border border-stone-200 rounded-md overflow-hidden bg-stone-50" ]
-                    [ img [ src "%s" url;
-                            alt "%s" title_text;
-                            class_ "w-full h-full object-cover" ] ])
+                    [ div [ class_ "relative" ]
+                        [ media_node; badge ] ])
                items);
         ]
   in

@@ -412,6 +412,45 @@ let block_delete request =
       ) in
       Dream.redirect request "/app/channels"
 
+let twitter_media_proxy request =
+  let open Lwt.Syntax in
+  match Dream.query request "url" with
+  | None ->
+      Dream.respond ~status:`Bad_Request "missing url"
+  | Some encoded ->
+      (* Support both plain URL and base64url-encoded URL. *)
+      let raw_url =
+        if String.starts_with ~prefix:"https://video.twimg.com/" encoded then
+          encoded
+        else
+          match Dream.from_base64url encoded with
+          | Some u -> u
+          | None -> encoded
+      in
+      (* Safety: only allow Twitter/X video CDN host. *)
+      if not (String.starts_with ~prefix:"https://video.twimg.com/" raw_url) then
+        Dream.respond ~status:`Forbidden "forbidden"
+      else
+        let cmd =
+          Lwt_process.shell (Printf.sprintf "curl -fsSL %s" (Filename.quote raw_url))
+        in
+        let* body =
+          Lwt.catch
+            (fun () -> Lwt_process.pread cmd)
+            (fun _ -> Lwt.return "")
+        in
+        if body = "" then
+          Dream.respond ~status:`Internal_Server_Error "upstream error"
+        else
+          let content_type =
+            match Dream.query request "ct" with
+            | Some ct when ct <> "" -> ct
+            | _ -> "video/mp4"
+          in
+          Dream.respond
+            ~headers:[ "Content-Type", content_type ]
+            body
+
 (* ── Router ──────────────────────────────────────────────────────────────── *)
 
 let routes = [
@@ -433,6 +472,7 @@ let routes = [
   Dream.get  "/app/blocks/:id"      (Middleware.require_auth_html block_show);
    Dream.post "/app/blocks/:id/update" (Middleware.require_auth_html block_update);
    Dream.post "/app/blocks/:id/delete" (Middleware.require_auth_html block_delete);
+  Dream.get  "/proxy/twitter"       twitter_media_proxy;
   (* Channels JSON API *)
    Dream.get  "/api/channels"        channels_index;
    Dream.post "/api/channels"        channels_create;
