@@ -184,7 +184,43 @@ let fetch_twitter_tweet (url : string) : (string option * string option * string
         else
           (* Parse TweetDetail (or similar) response.
              We search the JSON tree for a [legacy] object (as used by X's
-             internal APIs) and then read full_text and media from it. *)
+             internal APIs) and then read full_text and media from it.
+             For longform tweets we also look for [note_tweet] text. *)
+          let rec find_note_text (json : Yojson.Safe.t) : string option =
+            match json with
+            | `Assoc fields ->
+                (* If this object itself has a [note_tweet] field, prefer that. *)
+                (match List.assoc_opt "note_tweet" fields with
+                 | Some note ->
+                     let txt =
+                       member "note_tweet_results" note
+                       |> member "result"
+                       |> member "text"
+                     in
+                     (match txt with
+                      | `String s when String.length s > 0 -> Some s
+                      | _ -> None)
+                 | None ->
+                     (* Otherwise, recurse into children. *)
+                     let rec loop = function
+                       | [] -> None
+                       | (_, v) :: rest ->
+                           (match find_note_text v with
+                            | Some _ as s -> s
+                            | None -> loop rest)
+                     in
+                     loop fields)
+            | `List xs ->
+                let rec loop = function
+                  | [] -> None
+                  | v :: rest ->
+                      (match find_note_text v with
+                       | Some _ as s -> s
+                       | None -> loop rest)
+                in
+                loop xs
+            | _ -> None
+          in
           let parse () =
             let json = Yojson.Safe.from_string body_str in
             let legacy =
@@ -199,6 +235,12 @@ let fetch_twitter_tweet (url : string) : (string option * string option * string
                   (match member "text" legacy with
                   | `String s -> s
                   | _ -> "")
+            in
+            let full_text =
+              match find_note_text json with
+              | Some long when String.length long > String.length full_text ->
+                  long
+              | _ -> full_text
             in
             let strip_urls (s : string) : string =
               let parts = String.split_on_char ' ' s in
