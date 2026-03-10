@@ -2,3 +2,7 @@
  (public_name fragment_api)
  (name main)
  (libraries fragment_web dream dream-cli caqti-driver-sqlite3))
+
+(executable
+ (name og_test)
+ (libraries fragment_web lwt.unix))

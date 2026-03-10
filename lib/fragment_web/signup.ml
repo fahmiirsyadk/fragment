@@ -26,6 +26,7 @@ let page request =
       div [ class_ "mt-10 max-w-sm" ] (
         error_block @ [
           form [ action "/signup"; method_ `POST; class_ "space-y-5" ] [
+            Dream_html.csrf_tag request;
             div [] [
               label [ for_ "email";
                       class_ "block text-[0.7rem] uppercase tracking-widest text-stone-400 mb-1.5" ]
@@ -54,4 +55,4 @@ let page request =
         ])
     ]
   in
-  Pages.respond ~title:"Fragment · Sign up" body
+  Pages.respond ~request ~title:"Fragment · Sign up" body

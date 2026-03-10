@@ -54,4 +54,68 @@ let () =
       Alcotest.test_case "valid payload parses"            `Quick test_payload_parse_ok;
       Alcotest.test_case "missing field fails gracefully"  `Quick test_payload_parse_missing_field;
     ];
+    "Storage (SQLite)", [
+      Alcotest.test_case "channels insert + list_by_user" `Quick (fun () ->
+        let user_id = "user_test" in
+        let db_file =
+          Filename.concat (Filename.get_temp_dir_name ())
+            (Printf.sprintf "fragment-test-%s.sqlite" (Dream.to_base64url (Dream.random 8)))
+        in
+        at_exit (fun () -> try Sys.remove db_file with _ -> ());
+
+        (* Apply a minimal schema via sqlite3 CLI. *)
+        let schema =
+          {|
+PRAGMA foreign_keys = ON;
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS channels (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+|}
+        in
+        let schema_file = db_file ^ ".schema.sql" in
+        let oc = open_out schema_file in
+        output_string oc schema;
+        close_out oc;
+        at_exit (fun () -> try Sys.remove schema_file with _ -> ());
+        Fragment.Db.apply_schema ~db_file ~schema_file ();
+
+        let handler =
+          Dream.sql_pool ("sqlite3:" ^ db_file)
+          @@ fun req ->
+          let open Lwt.Syntax in
+          let* r1 =
+            Dream.sql req (fun db ->
+              Fragment.Channel.insert db ~id:"c1" ~user_id ~title:"One" ~description:None
+            )
+          in
+          let* r2 =
+            Dream.sql req (fun db ->
+              Fragment.Channel.insert db ~id:"c2" ~user_id ~title:"Two" ~description:(Some "desc")
+            )
+          in
+          let* rlist =
+            Dream.sql req (fun db ->
+              Fragment.Channel.list_by_user db ~user_id
+            )
+          in
+          (match r1, r2, rlist with
+          | Ok (), Ok (), Ok channels ->
+              let titles = channels |> List.map (fun (c : Fragment.Channel.t) -> c.title) in
+              Alcotest.(check bool) "contains One" true (List.mem "One" titles);
+              Alcotest.(check bool) "contains Two" true (List.mem "Two" titles);
+              Dream.empty `OK
+          | _ ->
+              Dream.empty `Internal_Server_Error)
+        in
+        ignore (Dream.test handler (Dream.request "")));
+    ];
   ]
