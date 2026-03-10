@@ -129,6 +129,8 @@ let routes = [
   Dream.get  "/signup"              signup_page;
   Dream.post "/signup"              signup_form_route;
   Dream.get  "/app"                 (Middleware.require_auth_html Home.app);
+  Dream.get  "/app/api"             (Middleware.require_auth_html Home.app_api);
+  Dream.get  "/app/overview"        (Middleware.require_auth_html Home.app_overview);
   Dream.post "/api/auth/register"   register_route;
   Dream.post "/api/auth/login"      login_route;
   Dream.post "/api/auth/logout"     logout_route;

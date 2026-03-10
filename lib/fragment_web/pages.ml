@@ -21,6 +21,9 @@ let layout ~page_title children =
       meta  [ name "viewport"; content "width=device-width, initial-scale=1" ];
       title [] "%s" page_title;
       link  [ rel "stylesheet"; href "/static/app.css" ];
+      script
+        [ src "https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"; defer ]
+        "";
     ];
     body [ class_ "bg-stone-50 text-stone-900 min-h-screen" ] [
       div [ class_ "max-w-4xl mx-auto px-8 py-10" ] [
@@ -36,6 +39,7 @@ let layout ~page_title children =
           ];
         ];
         main [] children;
+        main [ id "app-main" ] children;
         Dream_html.Livereload.script;
       ];
     ];

@@ -6,6 +6,11 @@ let set_user_session request ~id ~email =
   let* () = Dream.set_session_field request "user_id" id in
   Dream.set_session_field request "user_email" email
 
+let is_htmx request =
+  match Dream.header request "HX-Request" with
+  | Some "true" -> true
+  | _ -> false
+
 (** Protect a JSON API route — responds 401 if the session has no user. *)
 let require_auth handler request =
   match Dream.session_field request "user_id" with
