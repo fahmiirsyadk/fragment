@@ -38,7 +38,6 @@ let layout ~page_title children =
             a [ href "/signup"; class_ "hover:text-stone-900 transition-colors no-underline" ] [ txt "Sign up" ];
           ];
         ];
-        main [] children;
         main [ id "app-main" ] children;
         Dream_html.Livereload.script;
       ];
