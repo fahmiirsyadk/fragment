@@ -1,0 +1,4 @@
+(library
+ (name fragment)
+ (libraries caqti caqti-lwt safepass yojson ppx_rapper_lwt)
+ (preprocess (pps ppx_deriving_yojson ppx_rapper)))

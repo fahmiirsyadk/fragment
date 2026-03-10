@@ -1,0 +1,46 @@
+## OCaml / Dune
+_build/
+*.install
+*.annot
+*.cmt
+*.cmti
+*.cmi
+*.cmx
+*.cmo
+*.cmxa
+*.a
+*.so
+*.dll
+*.exe
+*.byte
+*.native
+*.o
+*.obj
+*.out
+*.bc.js
+*.map
+
+node_modules/
+static/app.css
+
+## opam
+_opam/
+.opam-switch/
+
+## Editor / tooling
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+.merlin
+
+## Local data / secrets
+cookies.txt
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+.env
+.env.*
+

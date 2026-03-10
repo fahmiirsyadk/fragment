@@ -1,0 +1,4 @@
+(executable
+ (public_name fragment_api)
+ (name main)
+ (libraries fragment_web dream dream-cli caqti-driver-sqlite3))
