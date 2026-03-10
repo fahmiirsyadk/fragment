@@ -19,6 +19,7 @@
   dream-html
   dream-livereload
   dream-cli
+  lambdasoup
   caqti
   caqti-lwt
   caqti-driver-sqlite3

@@ -1,3 +1,3 @@
 (library
  (name fragment_web)
- (libraries dream dream-html dream-livereload fragment))
+ (libraries dream dream-html dream-livereload fragment lambdasoup))
