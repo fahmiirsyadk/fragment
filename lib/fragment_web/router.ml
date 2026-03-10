@@ -74,7 +74,7 @@ let signup_page request =
   | None   -> Signup.page request
 
 let login_form_route request =
-  let* form = Dream.form ~csrf:false request in
+  let* form = Dream.form ~csrf request in
   match form with
   | `Ok fields ->
       let find name = List.assoc_opt name fields |> Option.value ~default:"" in
@@ -96,7 +96,7 @@ let login_form_route request =
       Dream.redirect request "/login?error=1"
 
 let signup_form_route request =
-  let* form = Dream.form ~csrf:false request in
+  let* form = Dream.form ~csrf request in
   match form with
   | `Ok fields ->
       let find name = List.assoc_opt name fields |> Option.value ~default:"" in
